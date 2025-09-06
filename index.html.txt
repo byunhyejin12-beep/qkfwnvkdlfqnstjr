@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>급식 발주서 분석기</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .upload-section {
+            background: #f8f9ff;
+            border: 3px dashed #4facfe;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-section:hover {
+            border-color: #00f2fe;
+            background: #f0f4ff;
+        }
+        
+        .upload-section.dragover {
+            border-color: #00f2fe;
+            background: #e8f2ff;
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 4rem;
+            color: #4facfe;
+            margin-bottom: 20px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+        }
+        
+        .search-section {
+            margin: 30px 0;
+            display: none;
+        }
+        
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #4facfe;
+            font-size: 1.2rem;
+        }
+        
+        .results-section {
+            display: none;
+        }
+        
+        .result-item {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .ingredient-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .date-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .date-tag {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #4facfe;
+            font-size: 1.1rem;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+            display: none;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .file-info {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .file-info-text {
+            color: #2e7d32;
+            font-weight: 500;
+        }
+        
+        .preview-section {
+            display: none;
+            margin: 30px 0;
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 30px;
+        }
+        
+        .preview-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .excel-preview {
+            overflow-x: auto;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            font-size: 0.9rem;
+        }
+        
+        .excel-table th,
+        .excel-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+            min-width: 80px;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .excel-table th {
+            background: #4facfe;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        .excel-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .excel-table tr:hover {
+            background: #e8f2ff;
+        }
+        
+        .config-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .config-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .config-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .config-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        
+        .config-input:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+        
+        .config-help {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .analyze-btn {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+        }
+        
+        .analyze-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .row-highlight {
+            background: #fff3cd !important;
+            border-left: 4px solid #ffc107 !important;
+        }
+        
+        .col-highlight {
+            background: #d1ecf1 !important;
+            border-top: 4px solid #17a2b8 !important;
+        }
+        
+        .view-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .view-btn {
+            background: #f8f9ff;
+            border: 2px solid #4facfe;
+            color: #4facfe;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .view-btn.active {
+            background: #4facfe;
+            color: white;
+        }
+        
+        .view-btn:hover {
+            background: #4facfe;
+            color: white;
+        }
+        
+        .calendar-view {
+            display: block;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        
+        .calendar-header {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        
+        .calendar-day-header {
+            background: #4facfe;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .calendar-day {
+            background: white;
+            min-height: 80px;
+            padding: 5px;
+            position: relative;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .calendar-day:hover {
+            background: #f8f9ff;
+        }
+        
+        .calendar-day.other-month {
+            background: #f9f9f9;
+            color: #ccc;
+        }
+        
+        .calendar-day.has-data {
+            background: #e8f5e8;
+            border: 2px solid #4caf50;
+        }
+        
+        .calendar-day-number {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .calendar-quantity {
+            background: #4facfe;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            margin: 1px 0;
+            display: block;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .list-view {
+            display: block;
+        }
+        
+        .weekly-summary {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+        
+        .weekly-summary-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+        
+        .weekly-total {
+            color: #856404;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ 급식 발주서 분석기</h1>
+            <p>엑셀 파일을 업로드하고 식재료를 쉽게 검색하세요</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">📁</div>
+                <h3>급식 발주서 엑셀 파일을 업로드하세요</h3>
+                <p style="margin: 15px 0; color: #666;">병합된 셀과 복잡한 형태의 데이터도 자동으로 분석합니다</p>
+                <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls" />
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                    파일 선택하기
+                </button>
+                <p style="margin-top: 15px; color: #888; font-size: 0.9rem;">
+                    또는 파일을 여기로 드래그하세요
+                </p>
+            </div>
+            
+            <div class="file-info" id="fileInfo">
+                <div class="file-info-text" id="fileInfoText"></div>
+            </div>
+            
+            <div class="preview-section" id="previewSection">
+                <div class="preview-title">📊 엑셀 파일 미리보기 및 설정</div>
+                
+                <div class="excel-preview">
+                    <table class="excel-table" id="excelTable">
+                        <!-- 엑셀 데이터가 여기에 표시됩니다 -->
+                    </table>
+                </div>
+                
+                <div class="config-section">
+                    <div class="config-card">
+                        <div class="config-title">📅 날짜 헤더 행 번호</div>
+                        <input type="number" class="config-input" id="dateHeaderRow" placeholder="예: 1" min="1">
+                        <div class="config-help">
+                            <strong>1, 2, 3, 4, 5...</strong> 이런 숫자들이 적힌 행의 번호를 입력하세요<br>
+                            (이 숫자들이 9월 1일, 2일, 3일... 을 의미합니다)
+                        </div>
+                    </div>
+                    
+                    <div class="config-card">
+                        <div class="config-title">🗓️ 발주서 월</div>
+                        <select class="config-input" id="orderMonth">
+                            <option value="1">1월</option>
+                            <option value="2">2월</option>
+                            <option value="3">3월</option>
+                            <option value="4">4월</option>
+                            <option value="5">5월</option>
+                            <option value="6">6월</option>
+                            <option value="7">7월</option>
+                            <option value="8">8월</option>
+                            <option value="9" selected>9월</option>
+                            <option value="10">10월</option>
+                            <option value="11">11월</option>
+                            <option value="12">12월</option>
+                        </select>
+                        <div class="config-help">이 발주서가 몇 월 것인지 선택하세요</div>
+                    </div>
+                    
+                    <div class="config-card">
+                        <div class="config-title">🍎 식품명 컬럼</div>
+                        <input type="text" class="config-input" id="foodNameColumn" placeholder="예: B 또는 2">
+                        <div class="config-help">식품명이 적힌 컬럼 (보통 B열)</div>
+                    </div>
+                    
+                    <div class="config-card">
+                        <div class="config-title">📋 데이터 시작 행</div>
+                        <input type="number" class="config-input" id="dataStartRow" placeholder="예: 3" min="1">
+                        <div class="config-help">실제 식품 이름들이 시작되는 행 번호</div>
+                    </div>
+                    
+                    <div class="config-card">
+                        <div class="config-title">📅 날짜 시작 컬럼</div>
+                        <input type="text" class="config-input" id="dateStartColumn" placeholder="예: E 또는 5">
+                        <div class="config-help">1, 2, 3... 숫자가 시작되는 컬럼 (보통 E열)</div>
+                    </div>
+                </div>
+                
+                <button class="analyze-btn" id="analyzeBtn" onclick="analyzeWithConfig()">
+                    ✅ 설정 완료 - 분석 시작하기
+                </button>
+            </div>
+            
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalIngredients">0</div>
+                    <div class="stat-label">총 식재료 수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalDates">0</div>
+                    <div class="stat-label">발주 날짜 수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalEntries">0</div>
+                    <div class="stat-label">총 발주 항목</div>
+                </div>
+            </div>
+            
+            <div class="search-section" id="searchSection">
+                <div class="search-box">
+                    <input type="text" class="search-input" id="searchInput" placeholder="식재료명을 입력하세요 (예: 쌀, 돼지고기, 양파)">
+                    <span class="search-icon">🔍</span>
+                </div>
+            </div>
+            
+            <div class="results-section" id="resultsSection">
+                <div class="view-toggle" id="viewToggle" style="display: none;">
+                    <button class="view-btn active" id="listViewBtn" onclick="switchView('list')">📋 목록 보기</button>
+                    <button class="view-btn" id="calendarViewBtn" onclick="switchView('calendar')">📅 달력 보기</button>
+                </div>
+                <div id="searchResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let parsedData = [];
+        let ingredientIndex = {};
+        let rawExcelData = null;
+        let currentWorkbook = null;
+        let currentSearchResults = [];
+        let currentViewMode = 'list';
+        
+        // 파일 업로드 이벤트
+        document.getElementById('fileInput').addEventListener('change', handleFile);
+        
+        // 드래그 앤 드롭 이벤트
+        const uploadSection = document.getElementById('uploadSection');
+        
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+        
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+        
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile({ target: { files: files } });
+            }
+        });
+        
+        // 검색 이벤트
+        document.getElementById('searchInput').addEventListener('input', performSearch);
+        
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // 파일 정보 표시
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('fileInfoText').textContent = `파일: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    currentWorkbook = XLSX.read(data, { type: 'array' });
+                    showExcelPreview();
+                } catch (error) {
+                    console.error('파일 읽기 오류:', error);
+                    alert('파일을 읽는 중 오류가 발생했습니다. 올바른 엑셀 파일인지 확인해주세요.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function showExcelPreview() {
+            if (!currentWorkbook) return;
+            
+            // 첫 번째 시트 데이터 가져오기
+            const firstSheetName = currentWorkbook.SheetNames[0];
+            const worksheet = currentWorkbook.Sheets[firstSheetName];
+            rawExcelData = XLSX.utils.sheet_to_json(worksheet, { 
+                header: 1, 
+                defval: '',
+                raw: false 
+            });
+            
+            // 미리보기 테이블 생성 (최대 20행, 20열)
+            const previewData = rawExcelData.slice(0, 20).map(row => row.slice(0, 20));
+            const table = document.getElementById('excelTable');
+            
+            let html = '<thead><tr>';
+            // 컬럼 헤더 (A, B, C...)
+            for (let i = 0; i < Math.max(...previewData.map(row => row.length)); i++) {
+                html += `<th>${String.fromCharCode(65 + i)}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+            
+            // 데이터 행들
+            previewData.forEach((row, rowIndex) => {
+                html += `<tr>`;
+                for (let colIndex = 0; colIndex < Math.max(...previewData.map(r => r.length)); colIndex++) {
+                    const cellValue = row[colIndex] || '';
+                    html += `<td title="${cellValue}">${cellValue}</td>`;
+                }
+                html += '</tr>';
+            });
+            
+            html += '</tbody>';
+            table.innerHTML = html;
+            
+            // 미리보기 섹션 표시
+            document.getElementById('previewSection').style.display = 'block';
+            
+            // 자동 추천 설정
+            autoDetectSettings();
+        }
+        
+        function autoDetectSettings() {
+            if (!rawExcelData) return;
+            
+            // 식품명 컬럼 자동 감지 (No, 식품명, 식품속성, 단위 패턴)
+            for (let rowIndex = 0; rowIndex < Math.min(5, rawExcelData.length); rowIndex++) {
+                const row = rawExcelData[rowIndex];
+                for (let colIndex = 0; colIndex < row.length; colIndex++) {
+                    const cell = String(row[colIndex]).toLowerCase().trim();
+                    if (cell.includes('식품명') || cell.includes('품목') || cell.includes('품명')) {
+                        document.getElementById('foodNameColumn').value = String.fromCharCode(65 + colIndex);
+                        document.getElementById('dataStartRow').value = rowIndex + 2;
+                        break;
+                    }
+                }
+            }
+            
+            // 날짜 헤더 행 자동 감지 (1, 2, 3... 패턴)
+            for (let rowIndex = 0; rowIndex < Math.min(10, rawExcelData.length); rowIndex++) {
+                const row = rawExcelData[rowIndex];
+                let consecutiveNumbers = 0;
+                let startCol = -1;
+                
+                for (let colIndex = 0; colIndex < row.length; colIndex++) {
+                    const cell = String(row[colIndex]).trim();
+                    if (cell === String(consecutiveNumbers + 1)) {
+                        if (consecutiveNumbers === 0) startCol = colIndex;
+                        consecutiveNumbers++;
+                        if (consecutiveNumbers >= 3) { // 3개 이상 연속 숫자 발견
+                            document.getElementById('dateHeaderRow').value = rowIndex + 1;
+                            document.getElementById('dateStartColumn').value = String.fromCharCode(65 + startCol);
+                            return;
+                        }
+                    } else {
+                        consecutiveNumbers = 0;
+                        startCol = -1;
+                    }
+                }
+            }
+        }
+        
+        function analyzeWithConfig() {
+            const dateHeaderRow = parseInt(document.getElementById('dateHeaderRow').value) - 1;
+            const foodNameColumn = columnToIndex(document.getElementById('foodNameColumn').value);
+            const dataStartRow = parseInt(document.getElementById('dataStartRow').value) - 1;
+            const dateStartColumn = columnToIndex(document.getElementById('dateStartColumn').value);
+            const orderMonth = parseInt(document.getElementById('orderMonth').value);
+            
+            if (isNaN(dateHeaderRow) || isNaN(foodNameColumn) || isNaN(dataStartRow) || isNaN(dateStartColumn)) {
+                alert('모든 설정값을 올바르게 입력해주세요.');
+                return;
+            }
+            
+            // 분석 시작
+            document.getElementById('searchResults').innerHTML = '<div class="loading">📊 설정에 따라 데이터를 분석하고 있습니다...</div>';
+            document.getElementById('resultsSection').style.display = 'block';
+            
+            setTimeout(() => {
+                parseExcelWithConfig(dateHeaderRow, foodNameColumn, dataStartRow, dateStartColumn, orderMonth);
+            }, 100);
+        }
+        
+        function parseExcelWithConfig(dateHeaderRow, foodNameColumn, dataStartRow, dateStartColumn, orderMonth) {
+            parsedData = [];
+            ingredientIndex = {};
+            
+            if (!rawExcelData || rawExcelData.length === 0) {
+                alert('엑셀 데이터가 없습니다.');
+                return;
+            }
+            
+            // 날짜 헤더 행에서 날짜 정보 추출
+            const dateHeaderRowData = rawExcelData[dateHeaderRow];
+            const dates = [];
+            
+            // 선택한 월 기준으로 날짜 생성
+            const currentYear = new Date().getFullYear();
+            const month = orderMonth;
+            
+            // 해당 월의 마지막 날 계산
+            const lastDayOfMonth = new Date(currentYear, month, 0).getDate();
+            
+            for (let colIndex = dateStartColumn; colIndex < dateHeaderRowData.length; colIndex++) {
+                const dayNum = String(dateHeaderRowData[colIndex]).trim();
+                if (dayNum && !isNaN(dayNum)) {
+                    const day = parseInt(dayNum);
+                    // 1부터 31까지의 모든 날짜를 허용 (엑셀에 적힌 그대로 표시)
+                    if (day >= 1 && day <= 31) {
+                        // 엑셀에 적힌 날짜를 그대로 사용 (9월 31일이면 9월 31일로 표시)
+                        const dateStr = `${currentYear}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                        dates[colIndex] = {
+                            dateStr: dateStr,
+                            displayMonth: month,
+                            displayDay: day
+                        };
+                    }
+                }
+            }
+            
+            // 데이터 행들 처리
+            for (let rowIndex = dataStartRow; rowIndex < rawExcelData.length; rowIndex++) {
+                const row = rawExcelData[rowIndex];
+                if (!row || row.length === 0) continue;
+                
+                const foodName = String(row[foodNameColumn] || '').trim();
+                if (!foodName || foodName === '') continue;
+                
+                // 각 날짜 컬럼 확인
+                for (let colIndex = dateStartColumn; colIndex < row.length; colIndex++) {
+                    const cellValue = String(row[colIndex] || '').trim();
+                    const dateInfo = dates[colIndex];
+                    
+                    // 셀에 값이 있고 날짜가 유효한 경우
+                    if (cellValue && cellValue !== '' && cellValue !== '0' && dateInfo) {
+                        parsedData.push({
+                            ingredient: foodName,
+                            date: dateInfo.dateStr,
+                            displayMonth: dateInfo.displayMonth,
+                            displayDay: dateInfo.displayDay,
+                            quantity: cellValue,
+                            row: rowIndex + 1,
+                            col: String.fromCharCode(65 + colIndex)
+                        });
+                    }
+                }
+            }
+            
+            buildIngredientIndex();
+            updateStats();
+            showSearchSection();
+            
+            document.getElementById('searchResults').innerHTML = 
+                '<div class="no-results">✅ 분석 완료! 위의 검색창에서 식재료를 검색해보세요.</div>';
+        }
+        
+        function columnToIndex(column) {
+            if (typeof column === 'number') return column - 1;
+            if (typeof column === 'string') {
+                if (!isNaN(column)) return parseInt(column) - 1;
+                return column.toUpperCase().charCodeAt(0) - 65;
+            }
+            return -1;
+        }
+        
+        function buildIngredientIndex() {
+            ingredientIndex = {};
+            
+            parsedData.forEach(item => {
+                const ingredient = item.ingredient.toLowerCase();
+                if (!ingredientIndex[ingredient]) {
+                    ingredientIndex[ingredient] = {
+                        name: item.ingredient,
+                        dateQuantities: {}
+                    };
+                }
+                ingredientIndex[ingredient].dateQuantities[item.date] = {
+                    quantity: item.quantity,
+                    displayMonth: item.displayMonth,
+                    displayDay: item.displayDay
+                };
+            });
+        }
+        
+        function updateStats() {
+            const uniqueIngredients = Object.keys(ingredientIndex).length;
+            const uniqueDates = new Set(parsedData.map(item => item.date)).size;
+            const totalEntries = parsedData.length;
+            
+            document.getElementById('totalIngredients').textContent = uniqueIngredients;
+            document.getElementById('totalDates').textContent = uniqueDates;
+            document.getElementById('totalEntries').textContent = totalEntries;
+            document.getElementById('stats').style.display = 'grid';
+        }
+        
+        function showSearchSection() {
+            document.getElementById('searchSection').style.display = 'block';
+        }
+        
+        function performSearch() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            const resultsContainer = document.getElementById('searchResults');
+            
+            if (!query) {
+                resultsContainer.innerHTML = '<div class="no-results">🔍 검색어를 입력해주세요</div>';
+                return;
+            }
+            
+            const results = [];
+            
+            // 식재료명에서 검색
+            Object.keys(ingredientIndex).forEach(key => {
+                if (key.includes(query)) {
+                    const item = ingredientIndex[key];
+                    results.push({
+                        name: item.name,
+                        dateQuantities: item.dateQuantities
+                    });
+                }
+            });
+            
+            currentSearchResults = results;
+            displayResults(results, query);
+        }
+        
+        function switchView(viewMode) {
+            currentViewMode = viewMode;
+            
+            // 버튼 상태 업데이트
+            document.getElementById('listViewBtn').classList.toggle('active', viewMode === 'list');
+            document.getElementById('calendarViewBtn').classList.toggle('active', viewMode === 'calendar');
+            
+            // 현재 검색 결과로 다시 표시
+            if (currentSearchResults.length > 0) {
+                displayResults(currentSearchResults, document.getElementById('searchInput').value);
+            }
+        }
+        
+        function displayResults(results, query) {
+            const resultsContainer = document.getElementById('searchResults');
+            const viewToggle = document.getElementById('viewToggle');
+            
+            if (results.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="no-results">
+                        😔 "${query}"에 대한 검색 결과가 없습니다.<br>
+                        다른 키워드로 검색해보세요.
+                    </div>
+                `;
+                viewToggle.style.display = 'none';
+                return;
+            }
+            
+            // 뷰 토글 버튼 표시
+            viewToggle.style.display = 'flex';
+            
+            if (currentViewMode === 'calendar') {
+                displayCalendarView(results, query);
+            } else {
+                displayListView(results, query);
+            }
+        }
+        
+        function displayListView(results, query) {
+            const resultsContainer = document.getElementById('searchResults');
+            
+            let html = '';
+            results.forEach(result => {
+                const sortedDates = Object.keys(result.dateQuantities).sort();
+                
+                // 총 발주량 계산
+                let totalQuantity = 0;
+                let unit = '';
+                
+                const dateTags = sortedDates.map(date => {
+                    // 엑셀에 적힌 그대로의 날짜 정보 사용
+                    const dateInfo = result.dateQuantities[date];
+                    const month = dateInfo.displayMonth;
+                    const day = dateInfo.displayDay;
+                    const quantity = dateInfo.quantity;
+                    
+                    // 수량에서 숫자와 단위 분리
+                    const quantityMatch = quantity.match(/^([\d.,]+)\s*(.*)$/);
+                    if (quantityMatch) {
+                        const numericValue = parseFloat(quantityMatch[1].replace(/,/g, ''));
+                        if (!isNaN(numericValue)) {
+                            totalQuantity += numericValue;
+                            if (!unit && quantityMatch[2]) {
+                                unit = quantityMatch[2].trim();
+                            }
+                        }
+                    }
+                    
+                    return `<span class="date-tag">${month}월 ${day}일 (${quantity})</span>`;
+                }).join('');
+                
+                // 총 발주량 표시
+                const totalQuantityStr = unit ? `${totalQuantity.toLocaleString()}${unit}` : totalQuantity.toLocaleString();
+                
+                html += `
+                    <div class="result-item list-view">
+                        <div class="ingredient-name">${result.name}</div>
+                        <div style="margin-bottom: 15px; padding: 10px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #4facfe;">
+                            <strong>📊 이번달 총 발주량: ${totalQuantityStr}</strong>
+                        </div>
+                        <div class="date-info">
+                            ${dateTags}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsContainer.innerHTML = html;
+        }
+        
+        function displayCalendarView(results, query) {
+            const resultsContainer = document.getElementById('searchResults');
+            
+            // 모든 결과를 하나의 달력에 표시
+            let html = '';
+            
+            results.forEach(result => {
+                // 총 발주량 계산
+                let totalQuantity = 0;
+                let unit = '';
+                
+                Object.values(result.dateQuantities).forEach(dateInfo => {
+                    const quantityMatch = dateInfo.quantity.match(/^([\d.,]+)\s*(.*)$/);
+                    if (quantityMatch) {
+                        const numericValue = parseFloat(quantityMatch[1].replace(/,/g, ''));
+                        if (!isNaN(numericValue)) {
+                            totalQuantity += numericValue;
+                            if (!unit && quantityMatch[2]) {
+                                unit = quantityMatch[2].trim();
+                            }
+                        }
+                    }
+                });
+                
+                const totalQuantityStr = unit ? `${totalQuantity.toLocaleString()}${unit}` : totalQuantity.toLocaleString();
+                
+                html += `
+                    <div class="result-item">
+                        <div class="ingredient-name">${result.name}</div>
+                        <div style="margin-bottom: 15px; padding: 10px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #4facfe;">
+                            <strong>📊 이번달 총 발주량: ${totalQuantityStr}</strong>
+                        </div>
+                        <div class="calendar-view">
+                            ${generateCalendar(result.dateQuantities)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsContainer.innerHTML = html;
+        }
+        
+        function generateCalendar(dateQuantities) {
+            // 현재 월 정보 가져오기 (발주서 월 기준)
+            const orderMonth = parseInt(document.getElementById('orderMonth').value);
+            const currentYear = new Date().getFullYear();
+            
+            // 해당 월의 첫째 날과 마지막 날
+            const firstDay = new Date(currentYear, orderMonth - 1, 1);
+            const lastDay = new Date(currentYear, orderMonth, 0);
+            const daysInMonth = lastDay.getDate();
+            
+            // 첫째 날의 요일 (0: 일요일, 1: 월요일, ...)
+            const firstDayOfWeek = firstDay.getDay();
+            
+            // 주별 발주량 계산
+            const weeklyTotals = calculateWeeklyTotals(dateQuantities, orderMonth, currentYear, firstDayOfWeek, daysInMonth);
+            
+            let html = `
+                <div class="calendar-header">
+                    ${orderMonth}월 ${currentYear}년
+                </div>
+            `;
+            
+            // 주별 총량 표시
+            if (weeklyTotals.length > 0) {
+                html += '<div class="weekly-summary">';
+                html += '<div class="weekly-summary-title">📊 주별 발주량 요약</div>';
+                weeklyTotals.forEach((week, index) => {
+                    if (week.total > 0) {
+                        html += `<div class="weekly-total">${index + 1}주차: ${week.totalStr}</div>`;
+                    }
+                });
+                html += '</div>';
+            }
+            
+            html += `
+                <div class="calendar-grid">
+                    <div class="calendar-day-header">일</div>
+                    <div class="calendar-day-header">월</div>
+                    <div class="calendar-day-header">화</div>
+                    <div class="calendar-day-header">수</div>
+                    <div class="calendar-day-header">목</div>
+                    <div class="calendar-day-header">금</div>
+                    <div class="calendar-day-header">토</div>
+            `;
+            
+            // 이전 달의 마지막 날들로 빈 칸 채우기
+            const prevMonth = orderMonth === 1 ? 12 : orderMonth - 1;
+            const prevYear = orderMonth === 1 ? currentYear - 1 : currentYear;
+            const prevMonthLastDay = new Date(prevYear, prevMonth, 0).getDate();
+            
+            for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+                const day = prevMonthLastDay - i;
+                html += `<div class="calendar-day other-month">
+                    <div class="calendar-day-number">${day}</div>
+                </div>`;
+            }
+            
+            // 현재 달의 날짜들
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${currentYear}-${orderMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const hasData = dateQuantities[dateStr];
+                
+                html += `<div class="calendar-day ${hasData ? 'has-data' : ''}">
+                    <div class="calendar-day-number">${day}</div>`;
+                
+                if (hasData) {
+                    html += `<div class="calendar-quantity" title="${hasData.quantity}">${hasData.quantity}</div>`;
+                }
+                
+                html += '</div>';
+            }
+            
+            // 다음 달의 첫 날들로 나머지 칸 채우기
+            const totalCells = Math.ceil((firstDayOfWeek + daysInMonth) / 7) * 7;
+            const remainingCells = totalCells - (firstDayOfWeek + daysInMonth);
+            
+            for (let day = 1; day <= remainingCells; day++) {
+                html += `<div class="calendar-day other-month">
+                    <div class="calendar-day-number">${day}</div>
+                </div>`;
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function calculateWeeklyTotals(dateQuantities, month, year, firstDayOfWeek, daysInMonth) {
+            const weeks = [];
+            let currentWeek = 0;
+            
+            // 주별 데이터 초기화
+            for (let i = 0; i < 6; i++) {
+                weeks[i] = { total: 0, unit: '', totalStr: '' };
+            }
+            
+            // 각 날짜의 발주량을 주별로 합산
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const dateData = dateQuantities[dateStr];
+                
+                if (dateData) {
+                    // 해당 날짜가 몇 주차인지 계산
+                    const dayOfWeek = (firstDayOfWeek + day - 1) % 7;
+                    const weekNumber = Math.floor((firstDayOfWeek + day - 1) / 7);
+                    
+                    // 수량에서 숫자와 단위 분리
+                    const quantityMatch = dateData.quantity.match(/^([\d.,]+)\s*(.*)$/);
+                    if (quantityMatch) {
+                        const numericValue = parseFloat(quantityMatch[1].replace(/,/g, ''));
+                        if (!isNaN(numericValue)) {
+                            weeks[weekNumber].total += numericValue;
+                            if (!weeks[weekNumber].unit && quantityMatch[2]) {
+                                weeks[weekNumber].unit = quantityMatch[2].trim();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 주별 총량 문자열 생성
+            weeks.forEach(week => {
+                if (week.total > 0) {
+                    week.totalStr = week.unit ? 
+                        `${week.total.toLocaleString()}${week.unit}` : 
+                        week.total.toLocaleString();
+                }
+            });
+            
+            return weeks;
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ae9f5f27b1aa4a',t:'MTc1NzE2ODU4OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
